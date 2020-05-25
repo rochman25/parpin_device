@@ -37,7 +37,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 	StaticJsonDocument<capacity> doc;
 	doc["t"] = 1;
 	JsonObject data = doc.createNestedObject("d");
-	data["topic"] = "thing";
+	data["topic"] = "alat";
 	serializeJson(doc, message);
 
 	switch (type)
@@ -116,7 +116,7 @@ void setup()
 		delay(1000);
 	}
 
-	WiFiMulti.addAP("ganti", "1234567890");
+	WiFiMulti.addAP("private", "1234567890");
 
 	//WiFi.disconnect();
 	while (WiFiMulti.run() != WL_CONNECTED)
@@ -125,7 +125,7 @@ void setup()
 	}
 
 	// server address, port and URL
-	webSocket.begin("192.168.137.1", 3333,"/adonis-ws");
+	webSocket.begin("192.168.43.73", 3333,"/adonis-ws");
 
 	// event handler
 	webSocket.onEvent(webSocketEvent);
@@ -152,7 +152,7 @@ void loop()
 	StaticJsonDocument<capacity> doc;
 	doc["t"] = 7;
 	JsonObject data = doc.createNestedObject("d");
-	data["topic"] = "thing";
+	data["topic"] = "alat";
 	data["event"] = "message";
 	JsonObject msg = data.createNestedObject("data");
 	msg["userId"] = "alat 1";
