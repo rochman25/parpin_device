@@ -90,9 +90,11 @@ void setup()
 
     WebSocket.onEvent(webSocketEvent);
 
+    //waktu untuk connect kembali dengan server
     WebSocket.setReconnectInterval(5000);
 
-    WebSocket.enableHeartbeat(15000, 3000, 2);
+    //setting disconnect if pong not received 5 times / untuk optimal koneksi websocket
+    WebSocket.enableHeartbeat(15000, 3000, 5);
 
     pinMode(flowsensor, INPUT);
     digitalWrite(flowsensor, HIGH);

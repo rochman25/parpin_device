@@ -143,7 +143,7 @@ void setup()
 	// ping server every 15000 ms
 	// expect pong from server within 3000 ms
 	// consider connection disconnected if pong is not received 2 times
-	webSocket.enableHeartbeat(15000, 3000, 2);
+	webSocket.enableHeartbeat(15000, 3000, 5);
 }
 
 void loop()
