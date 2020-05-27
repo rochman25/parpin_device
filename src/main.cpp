@@ -1,167 +1,134 @@
 #include <Arduino.h>
 
-#include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <WebSocketsClient.h>
-#include <Hash.h>
 #include <ArduinoJson.h>
 
-ESP8266WiFiMulti WiFiMulti;
-WebSocketsClient webSocket;
+ESP8266WiFiMulti WifiMulti;
+WebSocketsClient WebSocket;
 
-#define USE_SERIAL Serial
+volatile int flow_frequency;
+unsigned int l_hour;
+unsigned char flowsensor = D2;
+unsigned long currentTime;
+unsigned long cloopTime;
 
+//flow sensor
+ICACHE_RAM_ATTR void flow()
+{
+    flow_frequency++;
+}
+
+//websocket event
 void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
 {
-	// char message[256];
-	// DynamicJsonDocument document(200);
-	// document["t"] = "1";
-	// JsonObject client = document.createNestedObject("d");
-	// client["topic"] = "thing";
-	// serializeJson(document, message);
+    String message = "";
+    const int capacity = JSON_ARRAY_SIZE(2) + 4 * JSON_OBJECT_SIZE(2);
+    StaticJsonDocument<capacity> doc;
+    doc["t"] = 1;
+    JsonObject data = doc.createNestedObject("d");
+    data["topic"] = "alat";
+    serializeJson(doc, message);
 
-	// DynamicJsonBuffer jsonBuffer(128);
-
-	// JsonObject &root = jsonBuffer.createObject();
-	// root["t"] = 1;
-
-	// JsonArray &data = root.createNestedArray("d");
-	// data.add("topic","thing");
-	// // data["topic"] = "thing";
-	// // 6 is the number of decimals to print
-
-	// StreamString databuf;
-	// root.printTo(databuf);
-	String message = "";
-	const int capacity = JSON_ARRAY_SIZE(2) + 4 * JSON_OBJECT_SIZE(2);
-	StaticJsonDocument<capacity> doc;
-	doc["t"] = 1;
-	JsonObject data = doc.createNestedObject("d");
-	data["topic"] = "alat";
-	serializeJson(doc, message);
-
-	switch (type)
-	{
-	case WStype_DISCONNECTED:
-		USE_SERIAL.printf("[WSc] Disconnected!\n");
-		delay(1000);
-		break;
-	case WStype_CONNECTED:
-	{
-		USE_SERIAL.printf("[WSc] Connected to url: %s\n", payload);
-		webSocket.sendTXT(message);
-		// send message to server when Connected
-		// webSocekt.sendTXT(root);
-
-		// serializeJson(document,webSocket);
-	}
-	break;
-	case WStype_TEXT:
-		USE_SERIAL.printf("[WSc] get text: %s\n", payload);
-		// webSocket.sendTXT(message);
-		// webSocket.sendTXT(databuf);
-		// USE_SERIAL.println(databuf);
-		// send message to server
-		// webSocket.sendTXT("Yo server ini dari wemos");
-		break;
-	case WStype_BIN:
-		USE_SERIAL.printf("[WSc] get binary length: %u\n", length);
-		hexdump(payload, length);
-
-		// send data to server
-		// webSocket.sendBIN(payload, length);
-		break;
-	case WStype_PING:
-		// pong will be send automatically
-		USE_SERIAL.printf("[WSc] get ping\n");
-		break;
-	case WStype_PONG:
-		// answer to a ping we send
-		USE_SERIAL.printf("[WSc] get pong\n");
-		// USE_SERIAL.printf("[WSc] get text: %s\n", payload);
-		break;
-	default:
-		USE_SERIAL.printf("[WSc] get type: %u\n", type);
-		break;
-	}
+    switch (type)
+    {
+    case WStype_DISCONNECTED:
+        Serial.printf("[WSc] Disconnected! \n");
+        delay(1000);
+        break;
+    case WStype_CONNECTED:
+        {
+            Serial.printf("[WSc] Connected to url: %s\n", payload);
+            WebSocket.sendTXT(message);
+        }
+        break;
+    case WStype_TEXT:
+        Serial.printf("[WSc] get text: %s\n", payload);
+        break;
+    case WStype_BIN:
+        Serial.printf("[WSc] get binary length: %u\n", length);
+        hexdump(payload, length);
+        break;
+    case WStype_PING:
+        // pong will be send automatically
+        Serial.printf("[WSc] get ping\n");
+        break;
+    case WStype_PONG:
+        // answer to a ping we send
+        Serial.printf("[WSc] get pong\n");
+        // USE_SERIAL.printf("[WSc] get text: %s\n", payload);
+        break;
+    default:
+        Serial.printf("[WSc] get type: %u\n", type);
+        break;
+    }
 }
 
 void setup()
 {
-	// char message[128];
-	// StaticJsonDocument<128> doc;
-	// doc['t'] = '1';
+    Serial.begin(115200);
+    Serial.setDebugOutput(true);
+    Serial.println();
+    Serial.println();
 
-	// DynamicJsonDocument document(200);
-	// document["t"] = "1";
-	// JsonObject client = document.createNestedObject("d");
-	// client["topic"] = "thing";
-	// serializeJson(document, message);
+    for (uint8_t t = 1; t < 4; t++)
+    {
+        Serial.printf("[SETUP] Booting %d...\n", t);
+        Serial.flush();
+        delay(1000);
+    }
 
-	// USE_SERIAL.begin(921600);
+    WifiMulti.addAP("Private", "12345678");
 
-	USE_SERIAL.begin(115200);
+    while (WifiMulti.run() != WL_CONNECTED)
+    {
+        Serial.printf("[SETUP] Network failed \n");
+        delay(100);
+    }
 
-	//Serial.setDebugOutput(true);
-	USE_SERIAL.setDebugOutput(true);
+    WebSocket.begin("192.168.43.73", 3333, "/adonis-ws");
 
-	USE_SERIAL.println();
-	USE_SERIAL.println();
-	USE_SERIAL.println();
+    WebSocket.onEvent(webSocketEvent);
 
-	for (uint8_t t = 4; t > 0; t--)
-	{
-		USE_SERIAL.printf("[SETUP] BOOT WAIT %d...\n", t);
-		USE_SERIAL.flush();
-		delay(1000);
-	}
+    WebSocket.setReconnectInterval(5000);
 
-	WiFiMulti.addAP("private", "1234567890");
+    WebSocket.enableHeartbeat(15000, 3000, 2);
 
-	//WiFi.disconnect();
-	while (WiFiMulti.run() != WL_CONNECTED)
-	{
-		delay(100);
-	}
-
-	// server address, port and URL
-	webSocket.begin("192.168.43.73", 3333,"/adonis-ws");
-
-	// event handler
-	webSocket.onEvent(webSocketEvent);
-
-	// webSocket.sendTXT(message);
-
-	// use HTTP Basic Authorization this is optional remove if not needed
-	// webSocket.setAuthorization("user", "Password");
-
-	// try ever 5000 again if connection has failed
-	webSocket.setReconnectInterval(5000);
-
-	// start heartbeat (optional)
-	// ping server every 15000 ms
-	// expect pong from server within 3000 ms
-	// consider connection disconnected if pong is not received 2 times
-	webSocket.enableHeartbeat(15000, 3000, 2);
+    pinMode(flowsensor, INPUT);
+    digitalWrite(flowsensor, HIGH);
+    attachInterrupt(flowsensor, flow, RISING);
+    sei();
+    currentTime = millis();
+    cloopTime = currentTime;
 }
 
 void loop()
 {
-	String message = "";
-	const int capacity = JSON_ARRAY_SIZE(2) + 4 * JSON_OBJECT_SIZE(2);
-	StaticJsonDocument<capacity> doc;
-	doc["t"] = 7;
-	JsonObject data = doc.createNestedObject("d");
-	data["topic"] = "alat";
-	data["event"] = "message";
-	JsonObject msg = data.createNestedObject("data");
-	msg["userId"] = "alat 1";
-	msg["body"] = "hai gaes aku wemos";
+    currentTime = millis();
+    if (currentTime >= (cloopTime + 1000))
+    {
+        String message = "";
+        const int capacity = JSON_ARRAY_SIZE(2) + 4 * JSON_OBJECT_SIZE(2);
+        StaticJsonDocument<capacity> doc;
+        doc["t"] = 7;
+        JsonObject data = doc.createNestedObject("d");
+        data["topic"] = "alat";
+        data["event"] = "message";
+        JsonObject msg = data.createNestedObject("data");
+        msg["nama_alat"] = "alat testing";
+        msg["body"] = "hai gaes aku alat testing wemos";
+        
+        cloopTime = currentTime;
 
-	serializeJson(doc, message);
-	// USE_SERIAL.println(message);
-	webSocket.sendTXT(message);
-	webSocket.loop();
-	delay(2000);
+        l_hour = (flow_frequency * 60 / 7.5);
+        flow_frequency = 0;
+        Serial.print(l_hour, DEC);
+        Serial.println(" L/hour");
 
+        msg["arus"] = l_hour;
+        serializeJson(doc, message);
+        WebSocket.sendTXT(message);
+    }
+    WebSocket.loop();
+    delay(2000);
 }

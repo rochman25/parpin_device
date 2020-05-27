@@ -1,0 +1,43 @@
+/*
+YF‐ S201 Water Flow Sensor
+Water Flow Sensor output processed to read in litres/hour
+Adaptation Courtesy: www.hobbytronics.co.uk
+*/
+#include <Arduino.h>
+
+volatile int flow_frequency;     // Measures flow sensor pulses
+unsigned int l_hour;             // Calculated litres/hour
+unsigned char flowsensor = D2; // Sensor Input
+unsigned long currentTime;
+unsigned long cloopTime;
+
+ICACHE_RAM_ATTR void flow() // Interrupt function
+{
+    flow_frequency++;
+}
+
+void setup()
+{
+    pinMode(D2, INPUT);
+    digitalWrite(D2, HIGH); // Optional Internal Pull-Up
+    Serial.begin(115200);
+    attachInterrupt(D2, flow, RISING); // Setup Interrupt
+    sei();                            // Enable interrupts
+    currentTime = millis();
+    cloopTime = currentTime;
+}
+
+void loop()
+{
+    currentTime = millis();
+    // Every second, calculate and print litres/hour
+    if (currentTime >= (cloopTime + 1000))
+    {
+        cloopTime = currentTime; // Updates cloopTime
+        // Pulse frequency (Hz) = 7.5Q, Q is flow rate in L/min.
+        l_hour = (flow_frequency * 60 / 7.5); // (Pulse frequency x 60 min) / 7.5Q = flowrate in L/hour
+        flow_frequency = 0;                   // Reset Counter
+        Serial.print(l_hour, DEC);            // Print litres/hour
+        Serial.println(" L/hour");
+    }
+}
