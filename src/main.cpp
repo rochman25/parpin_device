@@ -27,7 +27,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     StaticJsonDocument<capacity> doc;
     doc["t"] = 1;
     JsonObject data = doc.createNestedObject("d");
-    data["topic"] = "alat";
+    data["topic"] = "alat:5ebe4aa8223616100e59d3cb";
     serializeJson(doc, message);
 
     switch (type)
@@ -114,19 +114,17 @@ void loop()
         StaticJsonDocument<capacity> doc;
         doc["t"] = 7;
         JsonObject data = doc.createNestedObject("d");
-        data["topic"] = "alat";
+        data["topic"] = "alat:5ebe4aa8223616100e59d3cb";
         data["event"] = "message";
         JsonObject msg = data.createNestedObject("data");
-        msg["nama_alat"] = "alat testing";
-        msg["body"] = "hai gaes aku alat testing wemos";
-        
+        msg["alat_id"] = "5ebe4aa8223616100e59d3cb";
+        msg["nama_alat"] = "Alat 0";
+        msg["status"] = "online";
         cloopTime = currentTime;
-
         l_hour = (flow_frequency * 60 / 7.5);
         flow_frequency = 0;
         Serial.print(l_hour, DEC);
         Serial.println(" L/hour");
-
         msg["arus"] = l_hour;
         serializeJson(doc, message);
         WebSocket.sendTXT(message);
