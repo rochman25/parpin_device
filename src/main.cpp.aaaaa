@@ -7,6 +7,8 @@
 ESP8266WiFiMulti WifiMulti;
 WebSocketsClient WebSocket;
 
+int LED = D3;
+
 volatile int flow_frequency;
 unsigned int l_hour;
 unsigned char flowsensor = D2;
@@ -33,15 +35,19 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     switch (type)
     {
     case WStype_DISCONNECTED:
+        digitalWrite(LED, LOW);
         Serial.printf("[WSc] Disconnected! \n");
+        delay(3000);
+        digitalWrite(LED, HIGH);
         delay(1000);
         break;
     case WStype_CONNECTED:
-        {
-            Serial.printf("[WSc] Connected to url: %s\n", payload);
-            WebSocket.sendTXT(message);
-        }
-        break;
+    {
+        digitalWrite(LED, HIGH);
+        Serial.printf("[WSc] Connected to url: %s\n", payload);
+        WebSocket.sendTXT(message);
+    }
+    break;
     case WStype_TEXT:
         Serial.printf("[WSc] get text: %s\n", payload);
         break;
@@ -70,6 +76,7 @@ void setup()
     Serial.setDebugOutput(true);
     Serial.println();
     Serial.println();
+    pinMode(LED, OUTPUT);
 
     for (uint8_t t = 1; t < 4; t++)
     {
@@ -82,8 +89,13 @@ void setup()
 
     while (WifiMulti.run() != WL_CONNECTED)
     {
+        pinMode(BUILTIN_LED, OUTPUT);
+        pinMode(D0, WAKEUP_PULLUP);
+        digitalWrite(BUILTIN_LED, LOW);
         Serial.printf("[SETUP] Network failed \n");
-        delay(100);
+        delay(1000);
+        digitalWrite(BUILTIN_LED, HIGH);
+        delay(1000);
     }
 
     WebSocket.begin("192.168.43.73", 3333, "/adonis-ws");
@@ -106,29 +118,41 @@ void setup()
 
 void loop()
 {
-    currentTime = millis();
-    if (currentTime >= (cloopTime + 1000))
+    if (WifiMulti.run() != WL_CONNECTED)
     {
-        String message = "";
-        const int capacity = JSON_ARRAY_SIZE(2) + 4 * JSON_OBJECT_SIZE(2);
-        StaticJsonDocument<capacity> doc;
-        doc["t"] = 7;
-        JsonObject data = doc.createNestedObject("d");
-        data["topic"] = "alat:5ebe4aa8223616100e59d3cb";
-        data["event"] = "message";
-        JsonObject msg = data.createNestedObject("data");
-        msg["alat_id"] = "5ebe4aa8223616100e59d3cb";
-        msg["nama_alat"] = "Alat 0";
-        msg["status"] = "online";
-        cloopTime = currentTime;
-        l_hour = (flow_frequency * 60 / 7.5);
-        flow_frequency = 0;
-        Serial.print(l_hour, DEC);
-        Serial.println(" L/hour");
-        msg["arus"] = l_hour;
-        serializeJson(doc, message);
-        WebSocket.sendTXT(message);
+        digitalWrite(LED, LOW);
+        pinMode(BUILTIN_LED, OUTPUT);
+        pinMode(D0, WAKEUP_PULLUP);
+        digitalWrite(BUILTIN_LED, LOW);
+        Serial.printf("[SETUP] Network failed \n");
+        delay(1000);
+        digitalWrite(BUILTIN_LED, HIGH);
+        delay(1000);
+    }else{
+        currentTime = millis();
+        if (currentTime >= (cloopTime + 1000))
+        {
+            String message = "";
+            const int capacity = JSON_ARRAY_SIZE(2) + 4 * JSON_OBJECT_SIZE(2);
+            StaticJsonDocument<capacity> doc;
+            doc["t"] = 7;
+            JsonObject data = doc.createNestedObject("d");
+            data["topic"] = "alat:5ebe4aa8223616100e59d3cb";
+            data["event"] = "message";
+            JsonObject msg = data.createNestedObject("data");
+            msg["alat_id"] = "5ebe4aa8223616100e59d3cb";
+            msg["nama_alat"] = "Alat 0";
+            msg["status"] = "online";
+            cloopTime = currentTime;
+            l_hour = (flow_frequency * 60 / 7.5);
+            flow_frequency = 0;
+            Serial.print(l_hour, DEC);
+            Serial.println(" L/hour");
+            msg["arus"] = l_hour;
+            serializeJson(doc, message);
+            WebSocket.sendTXT(message);
+        }
+        WebSocket.loop();
+        delay(2000);
     }
-    WebSocket.loop();
-    delay(2000);
 }
